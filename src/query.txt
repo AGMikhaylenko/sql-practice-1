@@ -1,0 +1,92 @@
+CREATE TABLE book
+(
+    id        BIGSERIAL PRIMARY KEY,
+    name      VARCHAR(128) NOT NULL,
+    year      SMALLINT     NOT NULL,
+    pages     SMALLINT     NOT NULL,
+    author_id INT REFERENCES author (id) ON DELETE CASCADE
+);
+
+CREATE TABLE author
+(
+    id         SERIAL PRIMARY KEY,
+    first_name VARCHAR(128) NOT NULL,
+    last_name  VARCHAR(128) NOT NULL,
+    UNIQUE (first_name, last_name)
+);
+
+INSERT INTO author(first_name, last_name)
+VALUES ('Alexander', 'Pushkin'),
+       ('Mikhail', 'Lermontov'),
+       ('Nikolay', 'Nekrasov'),
+       ('Mikhail', 'Bulgakov'),
+       ('Alexander', 'Blok');
+
+INSERT INTO book(name, year, pages, author_id)
+VALUES ('Я помню чудное мгновенье', 1827, 10, (SELECT id FROM author WHERE last_name = 'Pushkin')),
+       ('Бородино', 1837, 15, (SELECT id FROM author WHERE last_name = 'Lermontov')),
+       ('Ночь, улица, фонарь, аптека', 1912, 5, (SELECT id FROM author WHERE last_name = 'Blok')),
+       ('Мастер и Маргарита', 1966, 170, (SELECT id FROM author WHERE last_name = 'Bulgakov')),
+       ('Кому на руси жить хорошо', 1866, 70, (SELECT id FROM author WHERE last_name = 'Nekrasov')),
+       ('Крестьянские дети', 1861, 50, (SELECT id FROM author WHERE last_name = 'Nekrasov')),
+       ('У лукоморья дуб зеленый', 1828, 2, (SELECT id FROM author WHERE last_name = 'Pushkin')),
+       ('Прощай, немытая Россия', 1887, 1, (SELECT id FROM author WHERE last_name = 'Lermontov')),
+       ('Собачье сердце', 1968, 150, (SELECT id FROM author WHERE last_name = 'Bulgakov')),
+       ('Россия', 1909, 20, (SELECT id FROM author WHERE last_name = 'Blok'));
+
+-- Запрос, выбирающий: название книги, год и имя автора
+-- Отсортировать в порядке возврастания по году
+SELECT b.name,
+       b.year,
+       (SELECT a.first_name || ' ' || a.last_name FROM author AS a WHERE a.id = b.author_id) AS name
+FROM book AS b
+ORDER BY year;
+
+-- Запрос, выбирающий: название книги, год и имя автора
+-- Отсортировать в порядке убывания по году
+SELECT b.name,
+       b.year,
+       (SELECT a.first_name || ' ' || a.last_name FROM author AS a WHERE a.id = b.author_id) AS full_name
+FROM book AS b
+ORDER BY year DESC;
+
+-- Запрос, выбирающий количество книг у заданного автора
+SELECT count(*)
+FROM book
+WHERE author_id = (SELECT id FROM author WHERE first_name = 'Mikhail' AND last_name = 'Bulgakov');
+
+-- Запрос, выбирающий книги, у которых количество страниц больше среднего
+SELECT name,
+       year,
+       pages,
+       (SELECT avg(pages) FROM book) AS avg
+FROM book
+WHERE pages > (SELECT avg(pages) FROM book);
+
+-- Запрос, выбирающий 5 самых старых книг
+-- Дополнить запрос и посчитать суммарное количество страниц среди этих книг
+SELECT name,
+       year,
+       pages,
+       (SELECT sum(pages) FROM (SELECT pages FROM book ORDER BY year LIMIT 5) AS older) AS sum_of_year
+FROM book
+ORDER BY year
+LIMIT 5;
+
+-- Запрос, изменяющий количество страниц у одной из книг
+UPDATE book
+SET pages = pages + 5
+WHERE name LIKE '%коморь%'
+RETURNING name, pages;
+
+-- Запрос, удаляющий автора, написавшего самую большую книгу
+DELETE
+FROM author
+WHERE id = (SELECT author_id FROM book ORDER BY pages DESC LIMIT 1)
+RETURNING *;
+
+SELECT *
+FROM author;
+
+SELECT *
+FROM book;
